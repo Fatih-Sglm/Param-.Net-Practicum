@@ -1,10 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
-using Param_.Net_Practicum.Core.Applicaiton.Dtos;
+using Param_.Net_Practicum.Core.Applicaiton.Dtos.ProductDto;
+using Param_.Net_Practicum.Core.Applicaiton.Exceptions;
 using Param_.Net_Practicum.Core.Applicaiton.Extensions;
 using Param_.Net_Practicum.Core.Applicaiton.Models;
+using Param_.Net_Practicum.Core.Applicaiton.Services;
 using Param_.Net_Practicum.Core.Domain.Entities;
+using Param_.Net_Practicum.CustomAttirbutes;
 using Param_.Net_Practicum.Infrastructure.Persistence.Context;
 using System.Linq.Dynamic.Core;
 
@@ -14,13 +18,19 @@ namespace Param_.Net_Practicum.Controllers
     [ApiController]
     public class ProductController : ControllerBase
     {
-        private readonly ApplicationContext _context;
+        //private readonly ApplicationContext _context;
 
-        public ProductController(ApplicationContext context)
+        //public ProductController(ApplicationContext context)
+        //{
+        //    _context = context;
+        //}
+
+        private readonly IProductService _productService;
+
+        public ProductController(IProductService productService)
         {
-            _context = context;
+            _productService = productService;
         }
-
 
         #region List(HttpGet)
         /// <summary>
@@ -28,15 +38,12 @@ namespace Param_.Net_Practicum.Controllers
         /// </summary>
         /// <param name="dynamic">There is a sort property in this class, it sends you the data in order with the column and sorting type you have given to it.</param>
         /// <returns></returns>
+        [CustomAuthorizeAttirbute]
         [HttpGet]
-        public async Task<IActionResult> GetProducts([FromQuery] Dynamic dynamic)
+        public async Task<IActionResult> GetProducts([FromQuery] Dynamic? dynamic, [FromHeader] string? token)
         {
-            List<Product> product;
-            if (dynamic != null)
-                product = _context.Products.AsQueryable().ApplyFilter(dynamic);
-            else
-                product = await _context.Products.ToListAsync();
-            return Ok(product);
+            var ListProduct = await _productService.GetListProductAsync(dynamic);
+            return Ok(ListProduct);
         }
         #endregion
 
@@ -50,11 +57,7 @@ namespace Param_.Net_Practicum.Controllers
         [HttpGet("{productId}")]
         public async Task<IActionResult> GetSingeProduct([FromRoute] Guid productId)
         {
-            var product = await _context.Products.FirstOrDefaultAsync(x => x.Id == productId);
-
-            if (product == null)
-                return NotFound("Böyle Bir Ürün Bulunamadı");
-
+            var product = await _productService.GetProductById(productId);
             return Ok(product);
         }
 
@@ -71,23 +74,11 @@ namespace Param_.Net_Practicum.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateProduct(CreateProductDto createProductDto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(GetErrorModel(ModelState));
-
-            Product p = new()
-            {
-                CategoryName = createProductDto.CategoryName,
-                Description = createProductDto.Description,
-                Name = createProductDto.Name,
-                Price = createProductDto.Price,
-            };
-            await _context.Products.AddAsync(p);
-            return Ok();
+            var response = await _productService.AddProductAsync(createProductDto);
+            return Ok(response);
         }
 
         #endregion
-
-
 
         #region Update(HttpPut)
         /// <summary>
@@ -98,22 +89,8 @@ namespace Param_.Net_Practicum.Controllers
         [HttpPut]
         public async Task<IActionResult> UpdateProduct(UpdateProductDto updateProductDto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(GetErrorModel(ModelState));
-
-            Product? product = await _context.Products.FirstOrDefaultAsync(x => x.Id == updateProductDto.Id);
-
-            if (product == null)
-                return NotFound("Böyle Bir Ürün Bulunamadı");
-
-            product.Id = updateProductDto.Id;
-            product.CategoryName = product.CategoryName;
-            product.Description = product.Description;
-            product.CreateDate = product.CreateDate;
-            product.UpdateDate = DateTime.Now;
-            product.Name = product.Name;
-            product.Price = product.Price;
-            return Ok("Ürün GÜncellendi");
+            var response = await _productService.UpdateProductAsync(updateProductDto);
+            return Ok(response);
         }
 
         #endregion
@@ -127,15 +104,8 @@ namespace Param_.Net_Practicum.Controllers
         [HttpPatch]
         public async Task<IActionResult> UpdateProductPrice(UpdateProductPriceDto updateProductPriceDto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(GetErrorModel(ModelState));
-
-            Product? product = await _context.Products.FirstOrDefaultAsync(x => x.Id == updateProductPriceDto.Id);
-            if (product == null)
-                return NotFound("Böyle Bir Ürün Bulunamadı");
-            product.Price = updateProductPriceDto.Price;
-
-            return Ok("Ürün GÜncellendi");
+            var response = await _productService.UpdateProductPriceAsync(updateProductPriceDto);
+            return Ok(response);
         }
         #endregion
 
@@ -148,27 +118,12 @@ namespace Param_.Net_Practicum.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProduct([FromRoute] Guid id)
         {
-            Product? product = await _context.Products.FirstOrDefaultAsync(x => x.Id == id);
-
-            if (product == null)
-                return NotFound("Böyle Bir Ürün Bulunamadı");
-            _context.Products.Remove(product);
-            return Ok("Ürün Silindi");
+            var response = await _productService.DeleteProductAsync(id);
+            return Ok(response);
         }
 
         #endregion
 
-        #region Private Method
-        /// <summary>
-        /// returns validation exception message with key
-        /// </summary>
-        /// <param name="modelState">State of the model sent by the client</param>
-        /// <returns></returns>
-        private static Dictionary<string, List<string>> GetErrorModel(ModelStateDictionary modelState)
-        {
-            return modelState.Where(x => x.Value.Errors.Any())
-                            .ToDictionary(e => e.Key, e => e.Value.Errors.Select(e => e.ErrorMessage).ToList());
-        }
-        #endregion
+
     }
 }

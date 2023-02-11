@@ -7,7 +7,7 @@ namespace Param_.Net_Practicum.Core.Applicaiton.Extensions
     /// </summary>
     public static class DynamicFilterExtenions
     {
-        public static List<T> ApplyFilter<T>(this IQueryable<T> query, Dynamic dynamic)
+        public static IQueryable<T> ApplyFilter<T>(this IQueryable<T> query, Dynamic dynamic)
         {
 
             if (dynamic.Sort != null)
@@ -22,7 +22,7 @@ namespace Param_.Net_Practicum.Core.Applicaiton.Extensions
                 }
             }
 
-            return query.ToList();
+            return query;
         }
         private static bool CheckHasProperty<T>(string propertyName)
         {

@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Param_.Net_Practicum.Core.Applicaiton.Dtos
+namespace Param_.Net_Practicum.Core.Applicaiton.Dtos.ProductDto
 {
     public class UpdateProductDto
     {
@@ -13,6 +13,6 @@ namespace Param_.Net_Practicum.Core.Applicaiton.Dtos
         [Required]
         public float Price { get; set; }
         [Required]
-        public string CategoryName { get; set; }
+        public Guid CategoryId { get; set; }
     }
 }
